@@ -1,0 +1,5 @@
+services:
+  openship-telegram:
+    build: .
+    restart: unless-stopped
+    env_file: .env
