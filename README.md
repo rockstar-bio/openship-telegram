@@ -9,7 +9,7 @@ Small, generic Telegram controller for self-hosted [OpenShip](https://openship.i
 - `/deploy` and `/redeploy` present inline project buttons.
 - Deployment status is polled and success/failure notifications are sent automatically.
 - `/deployments` lists recent deployment states.
-- Service restart is available in the API client for extending the handler surface safely.
+- Service restart is exposed with per-service inline buttons from `/projects`.
 - Access is restricted by configured Telegram user IDs and/or chat IDs.
 
 ## Setup

@@ -136,10 +136,12 @@ async function handle(update: TelegramUpdate) {
     if (action === "deploy" && first) await deploy(chatId, first);
     else if (action === "redeploy" && first) {
       const result = await api.redeploy(first);
+      const deploymentId = String(result.deployment_id ?? result.id ?? first);
       await telegram.sendMessage(
         chatId,
-        `Redeploy started: <code>${esc(String(result.deployment_id ?? result.id ?? first))}</code>`,
+        `Redeploy started: <code>${esc(deploymentId)}</code>`,
       );
+      void watchDeployment(chatId, deploymentId);
     } else if (action === "restart" && first && second) {
       await api.restartService(first, second);
       await telegram.sendMessage(
