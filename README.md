@@ -13,6 +13,7 @@ OpenShip Telegram Controller lets authorized Telegram users monitor and operate 
 - `/updates` — available project updates with confirmed apply buttons
 - `/domains` — domain verification and SSL status
 - `/jobs` — scheduled jobs and recent run status
+- `/clean` — confirmed cleanup of unused deployment images and Docker build-cache
 - `/patch` — confirmed cache and branding maintenance patches
 - `/menu` — reopen the inline main menu
 
@@ -57,6 +58,7 @@ Create an OpenShip personal access token with the smallest permissions needed:
 - `deployment:list`
 - `deployment:read`
 - `deployment:write` for deploy/redeploy
+- `job:write` plus instance-admin permission for `/clean` (OpenShip protects built-in garbage-collection jobs)
 
 For `https://vps.rockstar.bio`:
 
@@ -201,13 +203,14 @@ When the bot starts, it registers these commands with Telegram. In the Telegram 
 /updates      View available updates
 /domains      View domains and SSL status
 /jobs         View scheduled jobs
+/clean        Clean unused deployment cache
 /patch        Run confirmed maintenance patches
 /help         Show command help
 ```
 
 `/start` and `/menu` open the inline main menu. The buttons provide shortcuts for status, projects, deploy, redeploy, deployments, issues, backups, updates, domains, jobs, patches, and help. Most screens include a `⬅️ Main menu` button so users do not need to type another command.
 
-Operational changes always ask for confirmation. This includes deploy, redeploy, service restart, update apply, and maintenance patches. Logs and issue output are displayed in a bounded message and are HTML-escaped before being sent to Telegram.
+Operational changes always ask for confirmation. This includes deploy, redeploy, service restart, update apply, backup run, cleanup, and maintenance patches. `/clean` calls only OpenShip 0.7.2's named `images:gc` and `build-cache:gc` jobs. It does not delete arbitrary files, active deployments, or retained rollback artifacts. Logs and issue output are displayed in a bounded message and are HTML-escaped before being sent to Telegram.
 
 Commands also work in group chats using Telegram’s bot-name form, such as `/status@my_openship_bot`.
 

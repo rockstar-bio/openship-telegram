@@ -24,6 +24,7 @@ const patchJobs =
       )
     : undefined;
 const activeDeployments = new Set<string>();
+let cleanupRunning = false;
 const log = (message: string, error?: unknown) =>
   console.error(
     new Date().toISOString(),
@@ -99,7 +100,7 @@ const menuKeyboard = {
     ],
     [
       { text: "🚨 Issues", callback_data: "menu|issues" },
-      { text: "🖥 Server", callback_data: "menu|status" },
+      { text: "🧹 Clean", callback_data: "menu|cleanup" },
     ],
     [
       { text: "💾 Backups", callback_data: "menu|backups" },
@@ -168,7 +169,7 @@ async function home(chatId: number) {
 async function help(chatId: number) {
   return telegram.sendMessage(
     chatId,
-    `<b>${esc(config.hostName)} commands</b>\n\n/status — health and server resources\n/projects — projects, services, logs, and restart buttons\n/issues — current outages and action-required items\n/deploy — deploy a linked project\n/redeploy — redeploy a project\n/deployments — recent deployments and logs\n/backups — backup policies and recent runs\n/updates — available updates\n/domains — domain and SSL status\n/jobs — scheduled jobs and last runs\n/patch — confirmed maintenance patches\n/help — show this help`,
+    `<b>${esc(config.hostName)} commands</b>\n\n/status — health and server resources\n/projects — projects, services, logs, and restart buttons\n/issues — current outages and action-required items\n/deploy — deploy a linked project\n/redeploy — redeploy a project\n/deployments — recent deployments and logs\n/backups — backup policies and recent runs\n/updates — available updates\n/domains — domain and SSL status\n/jobs — scheduled jobs and last runs\n/clean — remove unused deployment images and Docker build-cache\n/patch — confirmed maintenance patches\n/help — show this help`,
     menuKeyboard,
   );
 }
@@ -278,6 +279,57 @@ async function jobs(chatId: number) {
     `⏱ <b>Scheduled jobs</b>\n\n${text}`,
     backKeyboard,
   );
+}
+
+async function cleanup(chatId: number) {
+  if (cleanupRunning)
+    return telegram.sendMessage(
+      chatId,
+      "🧹 Cleanup is already running.",
+      backKeyboard,
+    );
+  return telegram.sendMessage(
+    chatId,
+    "🧹 <b>Safe OpenShip cleanup</b>\n\nThis runs only OpenShip's named garbage collectors:\n• unused deployment images\n• unused Docker build-cache\n\nActive deployments and retained rollback artifacts are protected. Confirm to continue.",
+    operationConfirmation("cleanup"),
+  );
+}
+
+async function runCleanup(chatId: number) {
+  if (cleanupRunning) return;
+  cleanupRunning = true;
+  const started = Date.now();
+  const jobsToRun = [
+    ["images:gc", "unused deployment images"],
+    ["build-cache:gc", "unused Docker build-cache"],
+  ] as const;
+  try {
+    for (const [key, name] of jobsToRun) {
+      await telegram.sendMessage(chatId, `🧹 Cleaning ${name}…`);
+      const result = await api.runJob(key);
+      const summary = result.summary
+        ? JSON.stringify(result.summary)
+        : "completed";
+      await telegram.sendMessage(
+        chatId,
+        `✅ ${esc(name)}: <code>${esc(summary).slice(0, 1200)}</code>`,
+      );
+    }
+    await telegram.sendMessage(
+      chatId,
+      `✅ Cleanup completed in <b>${duration(Date.now() - started)}</b>.`,
+      backKeyboard,
+    );
+  } catch (error) {
+    await telegram.sendMessage(
+      chatId,
+      `❌ Cleanup stopped after <b>${duration(Date.now() - started)}</b>. The remaining cleanup task was not run.`,
+      backKeyboard,
+    );
+    log("cleanup failed", error);
+  } finally {
+    cleanupRunning = false;
+  }
 }
 
 async function backups(chatId: number) {
@@ -641,6 +693,7 @@ async function handle(update: TelegramUpdate) {
     else if (action === "menu" && first === "updates") await updates(chatId);
     else if (action === "menu" && first === "domains") await domains(chatId);
     else if (action === "menu" && first === "jobs") await jobs(chatId);
+    else if (action === "menu" && first === "cleanup") await cleanup(chatId);
     else if (action === "menu" && first === "patch")
       await showPatches(chatId, userId);
     else if (action === "patch" && first && patchActions[first]) {
@@ -713,6 +766,12 @@ async function handle(update: TelegramUpdate) {
         chatId,
         `💾 Backup started: <code>${esc(String(result.id ?? result.runId ?? second))}</code>`,
       );
+    } else if (action === "confirm" && first === "cleanup") {
+      if (cleanupRunning) {
+        await telegram.sendMessage(chatId, "🧹 Cleanup is already running.");
+      } else {
+        void runCleanup(chatId);
+      }
     } else if (action === "deploy" && first) {
       await telegram.sendMessage(
         chatId,
@@ -783,6 +842,7 @@ async function handle(update: TelegramUpdate) {
   else if (command === "/updates") await updates(chatId);
   else if (command === "/domains") await domains(chatId);
   else if (command === "/jobs") await jobs(chatId);
+  else if (command === "/clean") await cleanup(chatId);
   else if (command === "/patch") await showPatches(chatId, userId);
   else if (command === "/help") await help(chatId);
   else if (command === "/start" || command === "/menu") await home(chatId);
@@ -803,6 +863,7 @@ async function main() {
       { command: "updates", description: "View available updates" },
       { command: "domains", description: "View domains and SSL" },
       { command: "jobs", description: "View scheduled jobs" },
+      { command: "clean", description: "Clean unused deployment cache" },
       { command: "patch", description: "Run confirmed maintenance patches" },
       { command: "help", description: "Show command help" },
     ])

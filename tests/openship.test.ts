@@ -106,6 +106,7 @@ describe("OpenShipApi", () => {
     await api.deploymentBuild("deployment/id");
     await api.applyUpdate("project/id");
     await api.runBackup("policy/id");
+    await api.runJob("images:gc");
 
     expect(
       requests.map((request) => `${request.method} ${request.url}`),
@@ -119,6 +120,7 @@ describe("OpenShipApi", () => {
       "GET https://example.test/api/proxy/api/deployments/deployment%2Fid/build",
       "POST https://example.test/api/proxy/api/updates/project%2Fid/apply",
       "POST https://example.test/api/proxy/api/backup-policies/policy%2Fid/run",
+      "POST https://example.test/api/proxy/api/jobs/images%3Agc/run",
     ]);
     globalThis.fetch = original;
   });

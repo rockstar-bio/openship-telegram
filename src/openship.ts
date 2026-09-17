@@ -174,6 +174,12 @@ export class OpenShipApi {
       { method: "POST", body: "{}" },
     );
   }
+  runJob(key: string) {
+    return this.request<Json>(`/jobs/${encodeURIComponent(key)}/run`, {
+      method: "POST",
+      body: "{}",
+    });
+  }
   scanUpdates() {
     return this.request<Json>("/updates/scan", {
       method: "POST",
