@@ -1,0 +1,20 @@
+[Unit]
+Description=OpenShip Telegram maintenance host runner
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/openship-telegram-host-runner
+EnvironmentFile=/etc/openship/maintenance-runner.env
+ExecStart=/usr/local/bin/bun /opt/openship-telegram-host-runner/host-runner.ts
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=false
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+

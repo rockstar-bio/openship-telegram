@@ -3,3 +3,14 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Maintenance runs through MAINTENANCE_RUNNER_URL. The bot has no host
+    # filesystem or Docker socket access and cannot execute arbitrary commands.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m

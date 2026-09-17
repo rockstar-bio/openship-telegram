@@ -1,14 +1,21 @@
 export type TelegramUpdate = {
   update_id: number;
-  message?: { chat: { id: number }; from?: { id: number }; text?: string };
+  message?: {
+    message_id: number;
+    chat: { id: number };
+    from?: { id: number };
+    text?: string;
+  };
   callback_query?: {
     id: string;
     data?: string;
     from: { id: number };
-    message?: { chat: { id: number } };
+    message?: { message_id: number; chat: { id: number } };
   };
 };
 type ApiResponse<T> = { ok: boolean; result: T; description?: string };
+export type TelegramMessage = { message_id: number };
+export type TelegramCommand = { command: string; description: string };
 
 export class TelegramApi {
   private offset = 0;
@@ -43,13 +50,30 @@ export class TelegramApi {
     if (last) this.offset = last.update_id + 1;
     return result;
   }
+  setMyCommands(commands: TelegramCommand[]) {
+    return this.call("setMyCommands", { commands });
+  }
   sendMessage(
     chatId: number,
     text: string,
     replyMarkup?: Record<string, unknown>,
-  ) {
-    return this.call("sendMessage", {
+  ): Promise<TelegramMessage> {
+    return this.call<TelegramMessage>("sendMessage", {
       chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    });
+  }
+  editMessageText(
+    chatId: number,
+    messageId: number,
+    text: string,
+    replyMarkup?: Record<string, unknown>,
+  ) {
+    return this.call("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
       text,
       parse_mode: "HTML",
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
